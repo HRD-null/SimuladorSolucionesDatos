@@ -8,41 +8,87 @@ const MAX_COLLABORATORS = 10;
 let collaboratorsData = [];
 
 /**
- * Función principal que se ejecuta al dar clic en el botón.
- * Llama a otras funciones que piden datos del usuario, colaboradores y almacenan la información.
+ * Función auxiliar que envuelve al prompt.
+ * Si el usuario cancela (retorna null), se pregunta:
+ * "¿Deseas cancelar el registro?"
+ * Si confirma, se retorna null; si no, se re-pregunta.
  */
-function init() {
-  gatherUserData();       // Función 1
-  askForCollaborators();  // Función 2
-  storeData();            // Función 3
+function customPrompt(message) {
+  while (true) {
+    let value = prompt(message);
+    if (value === null) {
+      if (confirm("¿Deseas cancelar el registro?")) {
+        return null;
+      } else {
+        // Si decide no cancelar, se reintenta el prompt.
+        continue;
+      }
+    }
+    return value;
+  }
 }
 
 /**
- * Función 1: Recopila datos del usuario (nombre, email, teléfono) usando prompt.
- * Valida que el teléfono tenga 10 dígitos. Utiliza alert para retroalimentación.
+ * Función principal que se ejecuta al dar clic en el botón.
+ * Llama a otras funciones que piden datos del usuario, colaboradores y almacenan la información.
+ * Si en cualquier etapa se cancela el registro, se detiene el proceso.
+ */
+function init() {
+  if (!gatherUserData()) return;       // Si se cancela la recolección de datos, se detiene.
+  if (!askForCollaborators()) return;    // Si se cancela en la sección de colaboradores, se detiene.
+  storeData();                         // Sólo se almacena si todo fue completado.
+}
+
+/**
+ * Función 1: Recopila datos del usuario (nombre, email, teléfono) usando customPrompt.
+ * Valida que el teléfono tenga 10 dígitos. Si en algún prompt se cancela y se confirma, se detiene el proceso.
  */
 function gatherUserData() {
   alert("¡Bienvenido/a al simulador de DataFrom!\nPor favor, completa la siguiente información.");
 
   // Pedir nombre
-  userName = prompt("¿Cuál es tu nombre?");
-  while (!userName) {
+  userName = customPrompt("¿Cuál es tu nombre?");
+  if (userName === null) {
+    alert("Registro cancelado.");
+    return false;
+  }
+  while (userName.trim() === "") {
     alert("El nombre no puede estar vacío. Inténtalo de nuevo.");
-    userName = prompt("¿Cuál es tu nombre?");
+    userName = customPrompt("¿Cuál es tu nombre?");
+    if (userName === null) {
+      alert("Registro cancelado.");
+      return false;
+    }
   }
 
   // Pedir correo
-  userEmail = prompt("¿Cuál es tu correo electrónico?");
-  while (!userEmail) {
+  userEmail = customPrompt("¿Cuál es tu correo electrónico?");
+  if (userEmail === null) {
+    alert("Registro cancelado.");
+    return false;
+  }
+  while (userEmail.trim() === "") {
     alert("El correo electrónico no puede estar vacío. Inténtalo de nuevo.");
-    userEmail = prompt("¿Cuál es tu correo electrónico?");
+    userEmail = customPrompt("¿Cuál es tu correo electrónico?");
+    if (userEmail === null) {
+      alert("Registro cancelado.");
+      return false;
+    }
   }
 
   // Pedir teléfono y validar
-  userPhone = prompt("¿Cuál es tu número de teléfono? (10 dígitos)");
+  userPhone = customPrompt("¿Cuál es tu número de teléfono? (10 dígitos)");
+  if (userPhone === null) {
+    alert("Registro cancelado.");
+    return false;
+  }
   while (!validatePhone(userPhone)) {
     alert("El teléfono debe tener 10 dígitos numéricos. Inténtalo de nuevo.");
-    userPhone = prompt("¿Cuál es tu número de teléfono? (10 dígitos)");
+    userPhone = customPrompt("¿Cuál es tu número de teléfono? (10 dígitos)");
+    if (userPhone === null) {
+      alert("Registro cancelado.");
+      return false;
+    }
   }
 
   alert(
@@ -50,6 +96,7 @@ function gatherUserData() {
     "Tu correo: " + userEmail + "\n" +
     "Tu teléfono: " + userPhone
   );
+  return true;
 }
 
 /**
@@ -63,21 +110,25 @@ function validatePhone(phone) {
 
 /**
  * Función 2: Pregunta si se desean invitar colaboradores.
- * - Si sí, pide cuántos.
- * - Valida que sea un número entero.
- * - Si es mayor a 10, se muestra un mensaje especial.
- * - Si es <= 10, se piden los datos de cada colaborador y se almacenan en un array.
+ * - Si el usuario acepta, se le pregunta cuántos y se solicitan los datos usando customPrompt.
+ * - En cada paso se verifica si se pulsa cancelar y se confirma.
  */
 function askForCollaborators() {
   let wantsCollaborators = confirm("¿Deseas invitar más colaboradores a la llamada?");
   
   if (wantsCollaborators) {
-    let numberOfCollaborators = prompt("¿Cuántos colaboradores deseas invitar?");
-
-    // Validar número entero
+    let numberOfCollaborators = customPrompt("¿Cuántos colaboradores deseas invitar?");
+    if (numberOfCollaborators === null) {
+      alert("Registro cancelado.");
+      return false;
+    }
     while (!validateInteger(numberOfCollaborators)) {
       alert("Por favor ingresa un número entero válido.");
-      numberOfCollaborators = prompt("¿Cuántos colaboradores deseas invitar?");
+      numberOfCollaborators = customPrompt("¿Cuántos colaboradores deseas invitar?");
+      if (numberOfCollaborators === null) {
+        alert("Registro cancelado.");
+        return false;
+      }
     }
 
     numberOfCollaborators = parseInt(numberOfCollaborators);
@@ -91,30 +142,45 @@ function askForCollaborators() {
     } else {
       // Solicitar datos de cada colaborador
       for (let i = 1; i <= numberOfCollaborators; i++) {
-        let collaboratorName = prompt("Ingresa el nombre del colaborador " + i + ":");
-        while (!collaboratorName) {
+        let collaboratorName = customPrompt("Ingresa el nombre del colaborador " + i + ":");
+        if (collaboratorName === null) {
+          alert("Registro cancelado.");
+          return false;
+        }
+        while (collaboratorName.trim() === "") {
           alert("El nombre no puede estar vacío. Inténtalo de nuevo.");
-          collaboratorName = prompt("Ingresa el nombre del colaborador " + i + ":");
+          collaboratorName = customPrompt("Ingresa el nombre del colaborador " + i + ":");
+          if (collaboratorName === null) {
+            alert("Registro cancelado.");
+            return false;
+          }
         }
 
-        let collaboratorEmail = prompt("Ingresa el correo electrónico del colaborador " + i + ":");
-        while (!collaboratorEmail) {
+        let collaboratorEmail = customPrompt("Ingresa el correo electrónico del colaborador " + i + ":");
+        if (collaboratorEmail === null) {
+          alert("Registro cancelado.");
+          return false;
+        }
+        while (collaboratorEmail.trim() === "") {
           alert("El correo electrónico no puede estar vacío. Inténtalo de nuevo.");
-          collaboratorEmail = prompt("Ingresa el correo electrónico del colaborador " + i + ":");
+          collaboratorEmail = customPrompt("Ingresa el correo electrónico del colaborador " + i + ":");
+          if (collaboratorEmail === null) {
+            alert("Registro cancelado.");
+            return false;
+          }
         }
 
-        // Guardar en el array de colaboradores
         collaboratorsData.push({
           name: collaboratorName,
           email: collaboratorEmail
         });
       }
-
       alert("¡Gracias! Se han registrado los datos de tus colaboradores.");
     }
   } else {
     alert("Perfecto. No se invitarán colaboradores adicionales.");
   }
+  return true;
 }
 
 /**
